@@ -6,27 +6,34 @@ from plotly.subplots import make_subplots
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
 
-# --- 2. CSS ปรับจูนระดับให้เท่ากันเป๊ะ (Pixel Perfect) ---
+# --- 2. CSS ปรับจูนระดับและรองรับมือถือ ---
 st.markdown("""
 <style>
-    [data-testid="stMetric"] { padding-left: 20px !important; border-left: 3px solid #4E4E4E; }
-    div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
-    div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
+    /* ปรับแต่ง Metrics ให้ดูดีในมือถือ */
+    [data-testid="stMetric"] { 
+        padding-left: 15px !important; 
+        border-left: 3px solid #4E4E4E; 
+        margin-bottom: 10px;
+    }
+    div[data-testid="stMetricValue"] { font-size: 28px !important; }
     
+    /* ปรับระดับ Date Input และ Info Box */
     .stDateInput { padding-top: 0px !important; }
     div.stAlert {
         margin-top: -1px !important; 
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-        line-height: 1.0 !important;
+        padding: 8px !important;
+        line-height: 1.2 !important;
         min-height: 44px !important;
         display: flex;
         align-items: center;
     }
+    
+    /* ซ่อนแถบเมนูกราฟถาวรเพื่อป้องกันการกดพลาดบนมือถือ */
+    .modebar { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🌱 Smart Farm Dashboard")
+st.title("🌱 Smart Farm") # ลดความยาวชื่อเพื่อพื้นที่หน้าจอ
 
 # --- 3. การเชื่อมต่อข้อมูล ---
 sheet_url = "https://docs.google.com/spreadsheets/d/1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4/edit?usp=sharing"
@@ -41,72 +48,65 @@ def load_data():
 
 try:
     all_data = load_data()
-    min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว Dashboard ---
-    with st.container():
-        c1, c2 = st.columns([1, 4], gap="small", vertical_alignment="center")
-        with c1:
-            selected_date = st.date_input("📅 เลือกวันที่", value=max_date, min_value=min_date, max_value=max_date, label_visibility="collapsed")
-        
-        data = all_data[all_data['timestamp'].dt.date == selected_date]
-        
-        with c2:
-            if not data.empty:
-                latest = data.iloc[-1]
-                ts = latest['timestamp']
-                thai_year = ts.year + 543
-                st.info(f"📅 ข้อมูลวันที่: {selected_date.strftime('%d/%m/')}{thai_year} | อัปเดตล่าสุด: {ts.strftime('%H:%M:%S')}")
-            else:
-                st.warning(f"⚠️ ไม่พบข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
+    # --- 4. ส่วนหัว Dashboard (ปรับช่องไฟให้กระชับ) ---
+    c1, c2 = st.columns([1.2, 2.8], gap="small")
+    with c1:
+        selected_date = st.date_input("เลือกวันที่", value=max_date, label_visibility="collapsed")
+    
+    data = all_data[all_data['timestamp'].dt.date == selected_date]
+    
+    with c2:
+        if not data.empty:
+            latest = data.iloc[-1]
+            st.info(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+        else:
+            st.warning("ไม่มีข้อมูล")
 
     if not data.empty:
-        # --- 5. Metrics ---
-        col1, col2, col3 = st.columns(3)
-        with col1: st.metric("🌡️ อุณหภูมิ", f"{latest['temp']} °C")
-        with col2: st.metric("💧 ความชื้น", f"{latest['hum']} %")
-        with col3: st.metric("☀️ แสง (Lux)", f"{latest['lux']}")
+        # --- 5. Metrics (ในมือถือจะเรียงแนวตั้งให้อัตโนมัติ) ---
+        m1, m2, m3 = st.columns(3)
+        m1.metric("🌡️ Temp", f"{latest['temp']}°C")
+        m2.metric("💧 Hum", f"{latest['hum']}%")
+        m3.metric("☀️ Lux", f"{latest['lux']}")
 
         st.divider()
 
-        # --- 6. กราฟอุณหภูมิและความชื้น (ล็อคไม่ให้ขยับ) ---
-        st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
+        # --- 6. กราฟอุณหภูมิและความชื้น (ล็อคและปรับขนาด) ---
+        st.write("📊 **Temp & Humidity**")
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", line=dict(color="#00D2FF", width=3)), secondary_y=True)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="T", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="H", line=dict(color="#00D2FF", width=2)), secondary_y=True)
 
         fig1.update_layout(
             template="plotly_dark", 
-            hovermode="x unified", 
+            hovermode="x unified",
+            height=300, # ลดความสูงเพื่อให้ดูในมือถือง่ายขึ้น
+            margin=dict(l=10, r=10, t=10, b=10),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0, font=dict(size=10)),
             paper_bgcolor='rgba(0,0,0,0)', 
             plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=0, r=0, t=30, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            dragmode=False # ปิดโหมดการลาก (Drag) ทั้งหมด
+            dragmode=False
         )
+        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True, tickfont=dict(size=10))
+        fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True, tickfont=dict(size=10))
+        fig1.update_yaxes(showgrid=False, secondary_y=True, fixedrange=True, tickfont=dict(size=10))
         
-        # ล็อคแกน X และ Y ไม่ให้ซูมหรือขยับ (fixedrange=True)
-        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10, fixedrange=True)
-        fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', secondary_y=False, fixedrange=True)
-        fig1.update_yaxes(title_text="ความชื้น (%)", showgrid=False, secondary_y=True, fixedrange=True)
-        
-        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False}) # ซ่อนแถบเครื่องมือด้านบน
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
-        # --- 7. กราฟความเข้มแสง (Lux) (ล็อคไม่ให้ขยับ) ---
-        st.subheader("☀️ กราฟความเข้มแสง (Lux)")
+        # --- 7. กราฟ Lux ---
+        st.write("☀️ **Light Intensity**")
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=2), fillcolor='rgba(255, 204, 0, 0.2)'))
-
+        fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'))
         fig2.update_layout(
-            template="plotly_dark", hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=0, r=0, t=30, b=0), showlegend=False,
-            dragmode=False # ปิดโหมดการลาก
+            template="plotly_dark", height=200, margin=dict(l=10, r=10, t=10, b=10),
+            paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False
         )
-        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10, fixedrange=True)
-        fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', fixedrange=True)
+        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True, tickfont=dict(size=10))
+        fig2.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True, tickfont=dict(size=10))
         
-        st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False}) # ซ่อนแถบเครื่องมือด้านบน
+        st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
 except Exception as e:
-    st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
+    st.error(f"Error: {e}")
