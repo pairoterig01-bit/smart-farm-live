@@ -6,28 +6,27 @@ from plotly.subplots import make_subplots
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm", layout="wide")
 
-# --- 2. CSS ปรับแต่งให้พอดีหน้าจอ (ไม่หลุดขอบ) ---
+# --- 2. CSS ปรับแต่งระยะห่าง (ปรับลงมาให้พอดี) ---
 st.markdown("""
 <style>
-    /* ลด Padding ของหน้าเว็บให้เหลือน้อยที่สุดแต่ไม่หลุดขอบ */
+    /* ปรับระยะห่างด้านบนให้พอดี ไม่ให้หลุดขอบ */
     .block-container { 
-        padding-top: 1.5rem !important; 
-        padding-bottom: 0rem !important; 
-        max-width: 100% !important;
+        padding-top: 2.5rem !important; 
+        padding-bottom: 1rem !important; 
     }
     
-    /* ปรับแต่ง Metrics ให้กะทัดรัด */
+    /* ปรับแต่ง Metrics ให้กะทัดรัดและอ่านง่าย */
     [data-testid="stMetric"] { 
-        padding: 5px 10px !important; 
-        border-left: 2px solid #4E4E4E; 
+        padding: 8px 12px !important; 
+        border-left: 3px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
     }
     div[data-testid="stMetricValue"] { font-size: 24px !important; }
+
+    /* ลดช่องไฟระหว่างองค์ประกอบ */
+    .stVerticalBlock { gap: 1rem !important; }
     
-    /* จัดการระยะห่างระหว่างกราฟและส่วนประกอบอื่นๆ */
-    .stVerticalBlock { gap: 0.8rem !important; }
-    
-    /* ซ่อน Modebar ของ Plotly */
+    /* ซ่อนแถบเครื่องมือของกราฟ */
     .modebar { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -47,20 +46,19 @@ try:
     all_data = load_data()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว (Header & Date Selector) ---
-    # ใช้การจัดเรียงแบบแนวนอนเพื่อประหยัดพื้นที่แนวตั้ง
-    c1, c2 = st.columns([2, 1])
+    # --- 4. ส่วนหัว (จัดระเบียบใหม่ให้ลงตัว) ---
+    st.title("🌱 Smart Farm") # ใช้ st.title มาตรฐานเพื่อให้ระยะห่างพอดี
+    
+    c1, c2 = st.columns([1, 1.5])
     with c1:
-        st.subheader("🌱 Smart Farm")
-    with c2:
         selected_date = st.date_input("Date", value=max_date, label_visibility="collapsed")
-
+    
     data = all_data[all_data['timestamp'].dt.date == selected_date]
 
     if not data.empty:
         latest = data.iloc[-1]
-        # แสดงเวลาอัปเดตบรรทัดเดียวเล็กๆ
-        st.caption(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+        # แสดงเวลาอัปเดตแบบชัดเจน
+        st.info(f"🕒 อัปเดตล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
 
         # --- 5. Metrics (3 คอลัมน์) ---
         m1, m2, m3 = st.columns(3)
@@ -68,18 +66,17 @@ try:
         m2.metric("💧 Hum", f"{latest['hum']}%")
         m3.metric("☀️ Lux", f"{latest['lux']}")
 
-        # --- 6. กราฟรวม (ความสูงมาตรฐานสำหรับมือถือ) ---
+        # --- 6. กราฟรวม (ความสูงที่เหมาะสมเพื่อไม่ให้ยาวเกินไป) ---
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="T", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="H", line=dict(color="#00D2FF", width=2)), secondary_y=True)
 
         fig1.update_layout(
-            template="plotly_dark", height=280, 
+            template="plotly_dark", height=300, 
             margin=dict(l=10, r=10, t=10, b=10),
             hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False, dragmode=False
+            showlegend=False, dragmode=False # ล็อคกราฟให้นิ่ง
         )
-        # ล็อคแกนให้นิ่งตามที่ต้องการ
         fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         fig1.update_yaxes(secondary_y=True, showgrid=False, fixedrange=True)
