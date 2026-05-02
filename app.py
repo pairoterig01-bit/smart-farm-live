@@ -24,7 +24,7 @@ st.markdown("""
 
     /* ปรับแต่งแถบ Info ให้เล็กลงเพื่อวางในคอลัมน์ */
     div.stAlert {
-        padding: 0px 15px !important;
+        padding: 0px 20px !important;
         min-height: auto !important;
         margin-top: 0px !important;
     }
