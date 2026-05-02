@@ -20,11 +20,11 @@ st.markdown("""
         border-left: 10px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
     }
-    div[data-testid="stMetricValue"] { font-size: 30px !important; }
+    div[data-testid="stMetricValue"] { font-size: 20px !important; }
 
     /* ปรับแต่งแถบ Info ให้เล็กลงเพื่อวางในคอลัมน์ */
     div.stAlert {
-        padding: 5px 10px !important;
+        padding: 15px 25px !important;
         min-height: auto !important;
         margin-top: 0px !important;
     }
