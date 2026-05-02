@@ -20,10 +20,13 @@ st.markdown("""
     
     /* ปรับระดับแถบ Info ให้เสมอกับช่อง Input */
     div.stAlert {
-        margin-top: -10px !important; 
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-        line-height: 1.0 !important;
+        margin-top: 0px !important;      /* คืนค่าเป็น 0 เพื่อเริ่มจัดระดับใหม่ */
+        padding-top: 5px !important;     /* ลดความหนาขอบบนลง */
+        padding-bottom: 5px !important;  /* ลดความหนาขอบล่างลง */
+        line-height: 1.4 !important;    /* ปรับระยะห่างระหว่างบรรทัดให้สมดุลกับความสูงปฏิทิน */
+        min-height: 45px !important;    /* บังคับความสูงขั้นต่ำให้เท่ากับมาตรฐานปฏิทิน */
+        display: flex;
+        align-items: center;            /* จัดตัวอักษรให้อยู่กึ่งกลางแนวตั้งพอดี */
     }
 </style>
 """, unsafe_allow_html=True)
