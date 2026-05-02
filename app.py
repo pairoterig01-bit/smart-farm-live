@@ -9,19 +9,17 @@ st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
 # --- 2. CSS ปรับจูนระดับให้เท่ากันเป๊ะ (Pixel Perfect) ---
 st.markdown("""
 <style>
-    /* ปรับแต่ง Metrics */
     [data-testid="stMetric"] { padding-left: 20px !important; border-left: 3px solid #4E4E4E; }
     div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
     div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
     
-    /* ปรับระดับ Date Input และ Info Box ให้ขนานกันพอดี */
     .stDateInput { padding-top: 0px !important; }
     div.stAlert {
-        margin-top: -1px !important;      /* ดันขึ้นเล็กน้อยเพื่อให้เส้นขอบล่างตรงกัน */
-        padding-top: 10px !important;     /* ปรับความหนาภายในให้เท่าช่อง Input */
+        margin-top: -1px !important; 
+        padding-top: 10px !important;
         padding-bottom: 10px !important;
         line-height: 1.0 !important;
-        min-height: 44px !important;      /* บังคับความสูงให้เท่ากับ Date Input */
+        min-height: 44px !important;
         display: flex;
         align-items: center;
     }
@@ -37,9 +35,7 @@ csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
 @st.cache_data(ttl=60)
 def load_data():
     df = pd.read_csv(csv_url)
-    # คลีนชื่อคอลัมน์
     df.columns = [str(col).strip().lower() for col in df.columns]
-    # แปลง Timestamp
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     return df
 
@@ -48,23 +44,14 @@ try:
     min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว Dashboard (Date Selection & Info) ---
+    # --- 4. ส่วนหัว Dashboard ---
     with st.container():
-        # ปรับ Alignment ให้ตรงกัน
         c1, c2 = st.columns([1, 4], gap="small", vertical_alignment="center")
-        
         with c1:
-            selected_date = st.date_input(
-                "📅 เลือกวันที่",
-                value=max_date,
-                min_value=min_date,
-                max_value=max_date,
-                label_visibility="collapsed"
-            )
-
-        # กรองข้อมูลตามวันที่เลือก
+            selected_date = st.date_input("📅 เลือกวันที่", value=max_date, min_value=min_date, max_value=max_date, label_visibility="collapsed")
+        
         data = all_data[all_data['timestamp'].dt.date == selected_date]
-
+        
         with c2:
             if not data.empty:
                 latest = data.iloc[-1]
@@ -75,7 +62,7 @@ try:
                 st.warning(f"⚠️ ไม่พบข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
 
     if not data.empty:
-        # --- 5. แสดงผล Metrics ---
+        # --- 5. Metrics ---
         col1, col2, col3 = st.columns(3)
         with col1: st.metric("🌡️ อุณหภูมิ", f"{latest['temp']} °C")
         with col2: st.metric("💧 ความชื้น", f"{latest['hum']} %")
@@ -83,15 +70,11 @@ try:
 
         st.divider()
 
-        # --- 6. กราฟอุณหภูมิและความชื้น (คืนค่าเส้นแนวตั้ง) ---
+        # --- 6. กราฟอุณหภูมิและความชื้น (ล็อคไม่ให้ขยับ) ---
         st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        
-        # เพิ่มเส้นกราฟ
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", 
-                                 line=dict(color="#FF4B4B", width=3)), secondary_y=False)
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", 
-                                 line=dict(color="#00D2FF", width=3)), secondary_y=True)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", line=dict(color="#00D2FF", width=3)), secondary_y=True)
 
         fig1.update_layout(
             template="plotly_dark", 
@@ -99,46 +82,31 @@ try:
             paper_bgcolor='rgba(0,0,0,0)', 
             plot_bgcolor='rgba(0,0,0,0)',
             margin=dict(l=0, r=0, t=30, b=0),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            dragmode=False # ปิดโหมดการลาก (Drag) ทั้งหมด
         )
         
-        # ปรับแต่งแกนและกู้คืนเส้นตารางแนวตั้ง (Gridlines)
-        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10)
-        fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', secondary_y=False)
-        fig1.update_yaxes(title_text="ความชื้น (%)", showgrid=False, secondary_y=True)
+        # ล็อคแกน X และ Y ไม่ให้ซูมหรือขยับ (fixedrange=True)
+        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10, fixedrange=True)
+        fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', secondary_y=False, fixedrange=True)
+        fig1.update_yaxes(title_text="ความชื้น (%)", showgrid=False, secondary_y=True, fixedrange=True)
         
-        st.plotly_chart(fig1, use_container_width=True)
+        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False}) # ซ่อนแถบเครื่องมือด้านบน
 
-        # --- 7. กราฟความเข้มแสง (Lux) แบบ Interactive ---
+        # --- 7. กราฟความเข้มแสง (Lux) (ล็อคไม่ให้ขยับ) ---
         st.subheader("☀️ กราฟความเข้มแสง (Lux)")
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(
-            x=data['timestamp'], 
-            y=data['lux'], 
-            name="แสง (Lux)",
-            fill='tozeroy', 
-            line=dict(color="#FFCC00", width=2),
-            fillcolor='rgba(255, 204, 0, 0.2)'
-        ))
+        fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=2), fillcolor='rgba(255, 204, 0, 0.2)'))
 
         fig2.update_layout(
-            template="plotly_dark",
-            hovermode="x unified",
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=0, r=0, t=30, b=0),
-            showlegend=False
+            template="plotly_dark", hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=0, r=0, t=30, b=0), showlegend=False,
+            dragmode=False # ปิดโหมดการลาก
         )
+        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10, fixedrange=True)
+        fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', fixedrange=True)
         
-        # ปรับแต่งแกนสำหรับกราฟ Lux
-        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10)
-        fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)')
-        
-        st.plotly_chart(fig2, use_container_width=True)
-
-        # ตารางข้อมูลดิบ
-        with st.expander("🔎 ดูตารางข้อมูลดิบ"):
-            st.dataframe(data.sort_values('timestamp', ascending=False), use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False}) # ซ่อนแถบเครื่องมือด้านบน
 
 except Exception as e:
-    st.error(f"⚠️ ไม่สามารถเชื่อมต่อข้อมูลได้: {e}")
+    st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
