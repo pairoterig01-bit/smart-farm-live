@@ -6,14 +6,19 @@ from plotly.subplots import make_subplots
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
 
-# --- 2. CSS สำหรับจัดระเบียบตัวเลข ---
+# --- 2. CSS สำหรับจัดระเบียบตำแหน่งให้เท่ากันพอดี ---
 st.markdown("""
 <style>
     [data-testid="stMetric"] { padding-left: 20px !important; border-left: 3px solid #4E4E4E; }
     div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
     div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
-    /* ปรับแต่งส่วน Date Input ให้ดูกลืนกับแถบข้อมูล */
+    
+    /* ปรับแต่งส่วน Date Input และแถบ Info ให้ขนานกัน */
     .stDateInput { padding-top: 0px !important; }
+    div.stAlert {
+        margin-top: 4px !important; /* ดันแถบ Info ลงมาให้ตรงกับช่องปฏิทิน */
+        padding: 10px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -35,10 +40,10 @@ try:
     min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนเลือกปฏิทินตรงบริเวณวงสีแดง (Container ด้านบน) ---
+    # --- 4. ส่วนหัว Dashboard (ช่องเลือกวันที่ และ แถบแจ้งเวลา) ---
     with st.container():
-        # สร้างคอลัมน์เพื่อจัดวาง ปฏิทิน และ ข้อความแจ้งเวลา ให้อยู่แถวเดียวกัน
-        c1, c2 = st.columns([1, 3])
+        # ปรับสัดส่วนคอลัมน์ให้เหมาะสม (1:4)
+        c1, c2 = st.columns([1, 4])
         
         with c1:
             selected_date = st.date_input(
@@ -46,10 +51,9 @@ try:
                 value=max_date,
                 min_value=min_date,
                 max_value=max_date,
-                label_visibility="collapsed" # ซ่อน label เพื่อให้ประหยัดพื้นที่
+                label_visibility="collapsed"
             )
 
-        # กรองข้อมูลตามวันที่เลือก
         data = all_data[all_data['timestamp'].dt.date == selected_date]
 
         with c2:
@@ -70,7 +74,7 @@ try:
 
         st.divider()
 
-        # --- 6. กราฟ 2 แกน ---
+        # --- 6. กราฟ ---
         st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         fig.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
