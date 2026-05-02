@@ -20,7 +20,7 @@ st.markdown("""
         border-left: 10px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
     }
-    div[data-testid="stMetricValue"] { font-size: 22px !important; }
+    div[data-testid="stMetricValue"] { font-size: 30px !important; }
 
     /* ปรับแต่งแถบ Info ให้เล็กลงเพื่อวางในคอลัมน์ */
     div.stAlert {
