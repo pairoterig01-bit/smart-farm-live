@@ -42,8 +42,12 @@ csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
 @st.cache_data(ttl=60)
 def load_data():
     df = pd.read_csv(csv_url)
+    # 1. ปรับชื่อคอลัมน์ให้เป็นตัวพิมพ์เล็กและตัดช่องว่าง
     df.columns = [str(col).strip().lower() for col in df.columns]
+    # 2. แปลงคอลัมน์ timestamp ให้เป็นรูปแบบวันที่และเวลา
     df['timestamp'] = pd.to_datetime(df['timestamp'])
+    # 3. เพิ่มบรรทัดนี้: สั่งให้เรียงลำดับตามเวลาจากน้อยไปมาก (สำคัญมาก!)
+    df = df.sort_values('timestamp').reset_index(drop=True)
     return df
 
 try:
