@@ -52,7 +52,7 @@ try:
     # --- 4. ส่วนหัวที่มีระดับไม่เท่ากัน (แก้ไขแล้ว) ---
     with st.container():
         # ใช้ gap="small" เพื่อให้กรอบอยู่ชิดกันมากขึ้น ดูเป็นระเบียบ
-        c1, c2 = st.columns([1, 4], gap="small")
+        c1, c2 = st.columns([1, 4], gap="small", vertical_alignment="center")
         
         with c1:
             selected_date = st.date_input(
