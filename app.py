@@ -13,14 +13,14 @@ st.markdown("""
     div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
     div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
     
-    /* ปรับระดับ Date Input และ Info Box ให้ขนานกันพอดี */
+    /* แก้ไขระดับ Date Input และ Info Box ให้ขนานกันพอดี */
     .stDateInput { padding-top: 0px !important; }
     div.stAlert {
-        margin-top: -2px !important;      /* ดันขึ้นเล็กน้อยเพื่อให้ขอบล่างเสมอพิกเซล */
-        padding-top: 8px !important;      /* ปรับความหนาภายในให้เท่าช่อง Input */
-        padding-bottom: 8px !important;
-        line-height: 1.2 !important;
-        min-height: 42px !important;
+        margin-top: -1px !important;      /* ดันขึ้น 1px เพื่อให้เส้นขอบล่างตรงกัน */
+        padding-top: 10px !important;     
+        padding-bottom: 10px !important;
+        line-height: 1.0 !important;
+        min-height: 44px !important;      /* บังคับความสูงให้เท่ากับ Date Input */
         display: flex;
         align-items: center;
     }
@@ -45,7 +45,7 @@ try:
     min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว Dashboard ---
+    # --- 4. ส่วนหัว Dashboard (ปรับ Alignment) ---
     with st.container():
         c1, c2 = st.columns([1, 4], gap="small", vertical_alignment="center")
         
@@ -78,7 +78,7 @@ try:
 
         st.divider()
 
-        # --- 6. กราฟอุณหภูมิและความชื้น ---
+        # --- 6. กราฟอุณหภูมิและความชื้น (กู้คืนเส้นแนวตั้ง) ---
         st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
@@ -92,18 +92,22 @@ try:
             margin=dict(l=0, r=0, t=30, b=0),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
-        fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', secondary_y=False)
+        
+        # ปรับแต่งแกนเพื่อให้เส้นตารางกลับมาชัดเจน
+        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10) # เส้นแนวตั้ง
+        fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', secondary_y=False)
         fig1.update_yaxes(title_text="ความชื้น (%)", showgrid=False, secondary_y=True)
+        
         st.plotly_chart(fig1, use_container_width=True)
 
-        # --- 7. กราฟความเข้มแสง (Lux) แบบใหม่ให้สอดคล้องกัน ---
+        # --- 7. กราฟความเข้มแสง (Lux) แบบ Interactive ---
         st.subheader("☀️ กราฟความเข้มแสง (Lux)")
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(
             x=data['timestamp'], 
             y=data['lux'], 
             name="แสง (Lux)",
-            fill='tozeroy', # ทำเป็น Area Chart
+            fill='tozeroy', 
             line=dict(color="#FFCC00", width=2),
             fillcolor='rgba(255, 204, 0, 0.2)'
         ))
@@ -116,8 +120,8 @@ try:
             margin=dict(l=0, r=0, t=30, b=0),
             showlegend=False
         )
-        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)')
-        fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)')
+        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10) # เส้นแนวตั้ง
+        fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)')
         
         st.plotly_chart(fig2, use_container_width=True)
 
