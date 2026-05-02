@@ -12,6 +12,8 @@ st.markdown("""
     [data-testid="stMetric"] { padding-left: 20px !important; border-left: 3px solid #4E4E4E; }
     div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
     div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
+    /* ปรับแต่งส่วน Date Input ให้ดูกลืนกับแถบข้อมูล */
+    .stDateInput { padding-top: 0px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -30,31 +32,37 @@ def load_data():
 
 try:
     all_data = load_data()
-    
-    # --- 4. ส่วนเลือกวันที่ (Calendar Filter) ใน Sidebar ---
-    st.sidebar.header("📅 เลือกช่วงเวลา")
     min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
-    
-    selected_date = st.sidebar.date_input(
-        "เลือกวันที่ต้องการดูข้อมูล",
-        value=max_date,  # ค่าเริ่มต้นเป็นวันล่าสุด
-        min_value=min_date,
-        max_value=max_date
-    )
 
-    # กรองข้อมูลตามวันที่เลือก
-    data = all_data[all_data['timestamp'].dt.date == selected_date]
+    # --- 4. ส่วนเลือกปฏิทินตรงบริเวณวงสีแดง (Container ด้านบน) ---
+    with st.container():
+        # สร้างคอลัมน์เพื่อจัดวาง ปฏิทิน และ ข้อความแจ้งเวลา ให้อยู่แถวเดียวกัน
+        c1, c2 = st.columns([1, 3])
+        
+        with c1:
+            selected_date = st.date_input(
+                "📅 เลือกวันที่",
+                value=max_date,
+                min_value=min_date,
+                max_value=max_date,
+                label_visibility="collapsed" # ซ่อน label เพื่อให้ประหยัดพื้นที่
+            )
 
-    if data.empty:
-        st.warning(f"⚠️ ไม่พบข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
-    else:
-        # --- 5. แสดงผล Metrics และกราฟ ---
-        latest = data.iloc[-1]
-        ts = latest['timestamp']
-        thai_year = ts.year + 543
-        st.info(f"📅 ข้อมูลของวันที่: {selected_date.strftime('%d/%m/')}{selected_date.year + 543} | อัปเดตล่าสุด: {ts.strftime('%H:%M:%S')}")
+        # กรองข้อมูลตามวันที่เลือก
+        data = all_data[all_data['timestamp'].dt.date == selected_date]
 
+        with c2:
+            if not data.empty:
+                latest = data.iloc[-1]
+                ts = latest['timestamp']
+                thai_year = ts.year + 543
+                st.info(f"📅 ข้อมูลวันที่: {selected_date.strftime('%d/%m/')}{thai_year} | อัปเดตล่าสุด: {ts.strftime('%H:%M:%S')}")
+            else:
+                st.warning(f"⚠️ ไม่พบข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
+
+    if not data.empty:
+        # --- 5. แสดงผล Metrics ---
         col1, col2, col3 = st.columns(3)
         with col1: st.metric("🌡️ อุณหภูมิ", f"{latest['temp']} °C")
         with col2: st.metric("💧 ความชื้น", f"{latest['hum']} %")
@@ -62,14 +70,12 @@ try:
 
         st.divider()
 
-        # --- 6. กราฟ 2 แกน (ขยายเส้นตาราง Grid ให้เลยเส้นกราฟ) ---
+        # --- 6. กราฟ 2 แกน ---
         st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
-        
         fig = make_subplots(specs=[[{"secondary_y": True}]])
         fig.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
         fig.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", line=dict(color="#00D2FF", width=3)), secondary_y=True)
 
-        # คำนวณช่วงแกน Y ให้เลยกราฟ
         t_min, t_max = data['temp'].min(), data['temp'].max()
         h_min, h_max = data['hum'].min(), data['hum'].max()
 
