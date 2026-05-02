@@ -17,7 +17,7 @@ st.markdown("""
     /* ปรับแต่ง Metrics ให้สวยงามและประหยัดพื้นที่ */
     [data-testid="stMetric"] { 
         padding: 8px 12px !important; 
-        border-left: 10px solid #4E4E4E; 
+        border-left: 20px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
     }
     div[data-testid="stMetricValue"] { font-size: 20px !important; }
