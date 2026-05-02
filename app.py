@@ -21,7 +21,7 @@ st.markdown("""
     /* ปรับระดับแถบ Info ให้เสมอกับช่อง Input */
     div.stAlert {
         margin-top: 0px !important;      /* คืนค่าเป็น 0 เพื่อเริ่มจัดระดับใหม่ */
-        padding-top: 5px !important;     /* ลดความหนาขอบบนลง */
+        padding-top: 0px !important;     /* ลดความหนาขอบบนลง */
         padding-bottom: 5px !important;  /* ลดความหนาขอบล่างลง */
         line-height: 1.4 !important;    /* ปรับระยะห่างระหว่างบรรทัดให้สมดุลกับความสูงปฏิทิน */
         min-height: 45px !important;    /* บังคับความสูงขั้นต่ำให้เท่ากับมาตรฐานปฏิทิน */
