@@ -6,32 +6,28 @@ from plotly.subplots import make_subplots
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm", layout="wide")
 
-# --- 2. CSS ขั้นสูงเพื่อดึงข้อมูลขึ้นด้านบนและประหยัดพื้นที่ ---
+# --- 2. CSS ปรับแต่งให้พอดีหน้าจอ (ไม่หลุดขอบ) ---
 st.markdown("""
 <style>
-    /* ลด Padding ของ Container หลัก */
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+    /* ลด Padding ของหน้าเว็บให้เหลือน้อยที่สุดแต่ไม่หลุดขอบ */
+    .block-container { 
+        padding-top: 1.5rem !important; 
+        padding-bottom: 0rem !important; 
+        max-width: 100% !important;
+    }
     
-    /* ปรับแต่ง Metrics ให้เล็กและชิดกัน */
+    /* ปรับแต่ง Metrics ให้กะทัดรัด */
     [data-testid="stMetric"] { 
         padding: 5px 10px !important; 
         border-left: 2px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
-        margin-bottom: 5px;
     }
-    div[data-testid="stMetricValue"] { font-size: 22px !important; }
-    div[data-testid="stMetricLabel"] { font-size: 14px !important; }
-
-    /* ดัน Header ขึ้นไปข้างบนสุด */
-    .stHeader { height: 0px; }
+    div[data-testid="stMetricValue"] { font-size: 24px !important; }
     
-    /* ปรับแต่งปฏิทินให้เล็กลง */
-    .stDateInput div[data-baseweb="input"] { height: 35px !important; }
+    /* จัดการระยะห่างระหว่างกราฟและส่วนประกอบอื่นๆ */
+    .stVerticalBlock { gap: 0.8rem !important; }
     
-    /* ลดระยะห่างระหว่าง Element */
-    .stVerticalBlock { gap: 0.5rem !important; }
-    
-    /* ซ่อนแถบเมนูกราฟ */
+    /* ซ่อน Modebar ของ Plotly */
     .modebar { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -51,54 +47,55 @@ try:
     all_data = load_data()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. แถวบนสุด: ชื่อ Dashboard + เลือกวันที่ + อัปเดต (ยุบรวมกัน) ---
-    head_col1, head_col2 = st.columns([1.5, 1])
-    with head_col1:
+    # --- 4. ส่วนหัว (Header & Date Selector) ---
+    # ใช้การจัดเรียงแบบแนวนอนเพื่อประหยัดพื้นที่แนวตั้ง
+    c1, c2 = st.columns([2, 1])
+    with c1:
         st.subheader("🌱 Smart Farm")
-    with head_col2:
+    with c2:
         selected_date = st.date_input("Date", value=max_date, label_visibility="collapsed")
 
     data = all_data[all_data['timestamp'].dt.date == selected_date]
 
     if not data.empty:
         latest = data.iloc[-1]
-        
-        # แถวแจ้งสถานะแบบบรรทัดเดียว
-        st.caption(f"🕒 อัปเดต: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+        # แสดงเวลาอัปเดตบรรทัดเดียวเล็กๆ
+        st.caption(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
 
-        # --- 5. Metrics แบบแถวเดียว (Single Row) ---
+        # --- 5. Metrics (3 คอลัมน์) ---
         m1, m2, m3 = st.columns(3)
         m1.metric("🌡️ Temp", f"{latest['temp']}°C")
         m2.metric("💧 Hum", f"{latest['hum']}%")
         m3.metric("☀️ Lux", f"{latest['lux']}")
 
-        # --- 6. กราฟรวม (ความสูงน้อยลงเพื่อประหยัดพื้นที่) ---
+        # --- 6. กราฟรวม (ความสูงมาตรฐานสำหรับมือถือ) ---
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="T", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="H", line=dict(color="#00D2FF", width=2)), secondary_y=True)
 
         fig1.update_layout(
-            template="plotly_dark", height=250, # ลดความสูงลงเหลือ 250
-            margin=dict(l=5, r=5, t=5, b=5),
+            template="plotly_dark", height=280, 
+            margin=dict(l=10, r=10, t=10, b=10),
             hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
             showlegend=False, dragmode=False
         )
-        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.05)', fixedrange=True, tickfont=dict(size=9))
-        fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.05)', fixedrange=True, tickfont=dict(size=9))
-        fig1.update_yaxes(secondary_y=True, showgrid=False, fixedrange=True, tickfont=dict(size=9))
+        # ล็อคแกนให้นิ่งตามที่ต้องการ
+        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
+        fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
+        fig1.update_yaxes(secondary_y=True, showgrid=False, fixedrange=True)
         
         st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
-        # --- 7. กราฟ Lux (ความสูงน้อยมาก เพื่อให้เห็นข้อมูลในหน้าเดียว) ---
+        # --- 7. กราฟ Lux ---
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'))
         fig2.update_layout(
-            template="plotly_dark", height=150, # กราฟ Lux เล็กๆ ด้านล่าง
-            margin=dict(l=5, r=5, t=5, b=5),
+            template="plotly_dark", height=180, 
+            margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False
         )
-        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.05)', fixedrange=True, tickfont=dict(size=9))
-        fig2.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.05)', fixedrange=True, tickfont=dict(size=9))
+        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
+        fig2.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         
         st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
