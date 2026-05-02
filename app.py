@@ -28,7 +28,7 @@ st.markdown("""
         min-height: auto !important;
         margin-top: 0px !important;
     }
-    div.stAlert p { font-size: 13px !important; margin: 0 !important; }
+    div.stAlert p { font-size: 20px !important; margin: 0 !important; }
 
     .stVerticalBlock { gap: 0.8rem !important; }
     .modebar { display: none !important; }
