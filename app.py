@@ -20,7 +20,7 @@ st.markdown("""
     
     /* ปรับระดับแถบ Info ให้เสมอกับช่อง Input */
     div.stAlert {
-        margin-top: -6px !important; 
+        margin-top: -10px !important; 
         padding-top: 10px !important;
         padding-bottom: 10px !important;
         line-height: 1.0 !important;
