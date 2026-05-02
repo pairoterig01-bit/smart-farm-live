@@ -9,15 +9,16 @@ st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
 # --- 2. CSS ปรับจูนระดับให้เท่ากันเป๊ะ (Pixel Perfect) ---
 st.markdown("""
 <style>
+    /* ปรับแต่ง Metrics */
     [data-testid="stMetric"] { padding-left: 20px !important; border-left: 3px solid #4E4E4E; }
     div[data-testid="stMetricValue"] { text-align: left !important; justify-content: flex-start !important; font-size: 32px !important; }
     div[data-testid="stMetricLabel"] { text-align: left !important; margin-bottom: -10px !important; }
     
-    /* แก้ไขระดับ Date Input และ Info Box ให้ขนานกันพอดี */
+    /* ปรับระดับ Date Input และ Info Box ให้ขนานกันพอดี */
     .stDateInput { padding-top: 0px !important; }
     div.stAlert {
-        margin-top: -1px !important;      /* ดันขึ้น 1px เพื่อให้เส้นขอบล่างตรงกัน */
-        padding-top: 10px !important;     
+        margin-top: -1px !important;      /* ดันขึ้นเล็กน้อยเพื่อให้เส้นขอบล่างตรงกัน */
+        padding-top: 10px !important;     /* ปรับความหนาภายในให้เท่าช่อง Input */
         padding-bottom: 10px !important;
         line-height: 1.0 !important;
         min-height: 44px !important;      /* บังคับความสูงให้เท่ากับ Date Input */
@@ -36,7 +37,9 @@ csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
 @st.cache_data(ttl=60)
 def load_data():
     df = pd.read_csv(csv_url)
+    # คลีนชื่อคอลัมน์
     df.columns = [str(col).strip().lower() for col in df.columns]
+    # แปลง Timestamp
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     return df
 
@@ -45,8 +48,9 @@ try:
     min_date = all_data['timestamp'].min().date()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว Dashboard (ปรับ Alignment) ---
+    # --- 4. ส่วนหัว Dashboard (Date Selection & Info) ---
     with st.container():
+        # ปรับ Alignment ให้ตรงกัน
         c1, c2 = st.columns([1, 4], gap="small", vertical_alignment="center")
         
         with c1:
@@ -58,6 +62,7 @@ try:
                 label_visibility="collapsed"
             )
 
+        # กรองข้อมูลตามวันที่เลือก
         data = all_data[all_data['timestamp'].dt.date == selected_date]
 
         with c2:
@@ -78,11 +83,15 @@ try:
 
         st.divider()
 
-        # --- 6. กราฟอุณหภูมิและความชื้น (กู้คืนเส้นแนวตั้ง) ---
+        # --- 6. กราฟอุณหภูมิและความชื้น (คืนค่าเส้นแนวตั้ง) ---
         st.subheader("📊 กราฟอุณหภูมิและความชื้น (แยกแกนซ้าย-ขวา)")
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", line=dict(color="#FF4B4B", width=3)), secondary_y=False)
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", line=dict(color="#00D2FF", width=3)), secondary_y=True)
+        
+        # เพิ่มเส้นกราฟ
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="อุณหภูมิ (°C)", 
+                                 line=dict(color="#FF4B4B", width=3)), secondary_y=False)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="ความชื้น (%)", 
+                                 line=dict(color="#00D2FF", width=3)), secondary_y=True)
 
         fig1.update_layout(
             template="plotly_dark", 
@@ -93,8 +102,8 @@ try:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         
-        # ปรับแต่งแกนเพื่อให้เส้นตารางกลับมาชัดเจน
-        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10) # เส้นแนวตั้ง
+        # ปรับแต่งแกนและกู้คืนเส้นตารางแนวตั้ง (Gridlines)
+        fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10)
         fig1.update_yaxes(title_text="อุณหภูมิ (°C)", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', secondary_y=False)
         fig1.update_yaxes(title_text="ความชื้น (%)", showgrid=False, secondary_y=True)
         
@@ -120,10 +129,16 @@ try:
             margin=dict(l=0, r=0, t=30, b=0),
             showlegend=False
         )
-        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10) # เส้นแนวตั้ง
+        
+        # ปรับแต่งแกนสำหรับกราฟ Lux
+        fig2.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)', nticks=10)
         fig2.update_yaxes(title_text="Lux", showgrid=True, gridcolor='rgba(255, 255, 255, 0.15)')
         
         st.plotly_chart(fig2, use_container_width=True)
 
+        # ตารางข้อมูลดิบ
+        with st.expander("🔎 ดูตารางข้อมูลดิบ"):
+            st.dataframe(data.sort_values('timestamp', ascending=False), use_container_width=True)
+
 except Exception as e:
-    st.error(f"⚠️ เกิดข้อผิดพลาด: {e}")
+    st.error(f"⚠️ ไม่สามารถเชื่อมต่อข้อมูลได้: {e}")
