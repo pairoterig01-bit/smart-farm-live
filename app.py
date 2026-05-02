@@ -82,14 +82,16 @@ try:
 
         # --- 6. กราฟรวม (ล็อคการปรับ และตั้งความสูงให้พอดีมือถือ) ---
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="T", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="H", line=dict(color="#00D2FF", width=2)), secondary_y=True)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
+        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
 
         fig1.update_layout(
             template="plotly_dark", height=280, 
             margin=dict(l=10, r=10, t=10, b=10),
             hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False, dragmode=False
+            showlegend=True,  # <--- เปลี่ยนจาก False เป็น True ตรงนี้ครับ
+            dragmode=False,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1) # เพิ่มบรรทัดนี้เพื่อให้ชื่อไปอยู่ด้านบน
         )
         fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
