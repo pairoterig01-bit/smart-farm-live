@@ -1,41 +1,44 @@
 import streamlit as st
 import pandas as pd
+import plotly.graph_objects as go
 
-# ลิงก์จาก Google Sheets ของคุณ
+# ตั้งค่าเบื้องต้น
+st.set_page_config(page_title="Smart Farm", layout="wide")
+
+# ลิงก์ Google Sheets ของคุณ
 sheet_url = "https://docs.google.com/spreadsheets/d/1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4/edit?usp=sharing"
-# แปลงลิงก์ให้เป็นรูปแบบที่ pandas อ่านได้ (CSV)
 csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
 
-st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
-st.title("🌱 Smart Farm Dashboard")
-
+@st.cache_data(ttl=5) # บังคับให้โหลดใหม่ทุก 5 วินาทีเพื่อเช็กบัก
 def load_data():
-    df = pd.read_csv(csv_url)
-    # แปลง Timestamp เป็นรูปแบบเวลาเพื่อให้กราฟแสดงผลถูกต้อง
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    return df
+    try:
+        df = pd.read_csv(csv_url)
+        # ล้างชื่อคอลัมน์เพื่อป้องกันช่องว่าง
+        df.columns = [str(col).strip().lower() for col in df.columns]
+        return df
+    except Exception as e:
+        return e
 
-try:
-    data = load_data()
-    
-    # 1. แสดงค่าล่าสุด (Current Status)
-    latest = data.iloc[-1]
-    col1, col2, col3 = st.columns(3)
-    col1.metric("อุณหภูมิ", f"{latest['temp']} °C")
-    col2.metric("ความชื้น", f"{latest['hum']} %")
-    col3.metric("แสง (Lux)", f"{latest['lux']}")
+st.title("🌱 Smart Farm Live Dashboard")
 
-    # 2. กราฟอุณหภูมิและความชื้น (เหมือน index.html เดิม)
-    st.subheader("📊 กราฟอุณหภูมิและความชื้น")
-    st.line_chart(data.set_index('timestamp')[['temp', 'hum']])
+data = load_data()
 
-    # 3. กราฟแสง Lux
-    st.subheader("☀️ กราฟความเข้มแสง (Lux)")
-    st.area_chart(data.set_index('timestamp')['lux'])
-
-    # 4. ตารางข้อมูลย้อนหลัง
-    with st.expander("ดูตารางข้อมูลทั้งหมด"):
-        st.write(data.sort_values(by='timestamp', ascending=False))
-
-except Exception as e:
-    st.error(f"เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
+if isinstance(data, Exception):
+    st.error(f"เชื่อมต่อ Google Sheets ไม่ได้: {data}")
+else:
+    try:
+        # ดึงข้อมูลแถวสุดท้าย
+        latest = data.iloc[-1]
+        
+        # แสดง Metric แบบง่ายก่อนเพื่อเช็กว่าค่ามาไหม
+        c1, c2, c3 = st.columns(3)
+        c1.metric("อุณหภูมิ", f"{latest.iloc[1]} °C")
+        c2.metric("ความชื้น", f"{latest.iloc[2]} %")
+        c3.metric("แสง", f"{latest.iloc[3]} Lux")
+        
+        st.success("ดึงข้อมูลสำเร็จ!")
+        st.write("ข้อมูล 5 แถวล่าสุด:", data.tail())
+        
+    except Exception as e:
+        st.warning(f"ดึงข้อมูลสำเร็จแต่แสดงผลไม่ได้: {e}")
+        st.write("โครงสร้างตารางของคุณ:", data.columns.tolist())
