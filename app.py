@@ -6,27 +6,31 @@ from plotly.subplots import make_subplots
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm", layout="wide")
 
-# --- 2. CSS ปรับแต่งระยะห่าง (ปรับลงมาให้พอดี) ---
+# --- 2. CSS ปรับแต่งระยะห่างให้สมดุล ---
 st.markdown("""
 <style>
-    /* ปรับระยะห่างด้านบนให้พอดี ไม่ให้หลุดขอบ */
     .block-container { 
-        padding-top: 2.5rem !important; 
+        padding-top: 2rem !important; 
         padding-bottom: 1rem !important; 
     }
     
-    /* ปรับแต่ง Metrics ให้กะทัดรัดและอ่านง่าย */
+    /* ปรับแต่ง Metrics ให้สวยงามและประหยัดพื้นที่ */
     [data-testid="stMetric"] { 
         padding: 8px 12px !important; 
         border-left: 3px solid #4E4E4E; 
         background: rgba(255,255,255,0.03);
     }
-    div[data-testid="stMetricValue"] { font-size: 24px !important; }
+    div[data-testid="stMetricValue"] { font-size: 22px !important; }
 
-    /* ลดช่องไฟระหว่างองค์ประกอบ */
-    .stVerticalBlock { gap: 1rem !important; }
-    
-    /* ซ่อนแถบเครื่องมือของกราฟ */
+    /* ปรับแต่งแถบ Info ให้เล็กลงเพื่อวางในคอลัมน์ */
+    div.stAlert {
+        padding: 5px 10px !important;
+        min-height: auto !important;
+        margin-top: 0px !important;
+    }
+    div.stAlert p { font-size: 13px !important; margin: 0 !important; }
+
+    .stVerticalBlock { gap: 0.8rem !important; }
     .modebar { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
@@ -46,36 +50,42 @@ try:
     all_data = load_data()
     max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว (จัดระเบียบใหม่ให้ลงตัว) ---
-    st.title("🌱 Smart Farm") # ใช้ st.title มาตรฐานเพื่อให้ระยะห่างพอดี
+    # --- 4. ส่วนหัว (ย้ายอัปเดตล่าสุดไปไว้ด้านบนขวา) ---
+    st.subheader("🌱 Smart Farm")
     
-    c1, c2 = st.columns([1, 1.5])
-    with c1:
+    # แบ่งคอลัมน์สำหรับ วันที่ และ แถบอัปเดตล่าสุด
+    head_c1, head_c2 = st.columns([1, 2], gap="small")
+    
+    with head_c1:
         selected_date = st.date_input("Date", value=max_date, label_visibility="collapsed")
     
     data = all_data[all_data['timestamp'].dt.date == selected_date]
 
-    if not data.empty:
-        latest = data.iloc[-1]
-        # แสดงเวลาอัปเดตแบบชัดเจน
-        st.info(f"🕒 อัปเดตล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+    with head_c2:
+        if not data.empty:
+            latest = data.iloc[-1]
+            # ย้ายมาไว้ในกรอบขวามือตามที่ระบุ
+            st.info(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+        else:
+            st.warning("ไม่มีข้อมูล")
 
-        # --- 5. Metrics (3 คอลัมน์) ---
+    if not data.empty:
+        # --- 5. Metrics ---
         m1, m2, m3 = st.columns(3)
         m1.metric("🌡️ Temp", f"{latest['temp']}°C")
         m2.metric("💧 Hum", f"{latest['hum']}%")
         m3.metric("☀️ Lux", f"{latest['lux']}")
 
-        # --- 6. กราฟรวม (ความสูงที่เหมาะสมเพื่อไม่ให้ยาวเกินไป) ---
+        # --- 6. กราฟรวม (ล็อคการปรับ และตั้งความสูงให้พอดีมือถือ) ---
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="T", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="H", line=dict(color="#00D2FF", width=2)), secondary_y=True)
 
         fig1.update_layout(
-            template="plotly_dark", height=300, 
+            template="plotly_dark", height=280, 
             margin=dict(l=10, r=10, t=10, b=10),
             hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=False, dragmode=False # ล็อคกราฟให้นิ่ง
+            showlegend=False, dragmode=False
         )
         fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
@@ -87,7 +97,7 @@ try:
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'))
         fig2.update_layout(
-            template="plotly_dark", height=180, 
+            template="plotly_dark", height=160, 
             margin=dict(l=10, r=10, t=10, b=10),
             paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False
         )
