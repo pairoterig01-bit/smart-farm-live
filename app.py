@@ -66,7 +66,7 @@ try:
             with col_time:
                 st.info(f"🕒 ข้อมูลล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
 
-            # กำหนดช่วงเวลา Min/Max เพื่อล็อคแกน X
+            # กำหนดช่วงเวลา Min/Max เพื่อล็อคแกน X ให้ตรงกัน
             min_x = data['timestamp'].min()
             max_x = data['timestamp'].max()
 
@@ -83,7 +83,8 @@ try:
             
             fig1.update_layout(
                 template="plotly_dark", height=280, 
-                margin=dict(l=10, r=50, t=10, b=10), # กำหนดระยะขอบขวา r=50 เผื่อแกนความชื้น
+                # กำหนด margin ซ้าย-ขวา ให้คงที่เพื่อความสมมาตร
+                margin=dict(l=50, r=50, t=10, b=10), 
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 dragmode=False
@@ -94,11 +95,10 @@ try:
                 fixedrange=True, range=[min_x, max_x]
             )
             fig1.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False, nticks=10)
-            fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True) # ปิด Grid ของแกนขวา
+            fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True)
             st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
-            # --- 7. กราฟ Lux (ปรับเพื่อให้พื้นที่เท่ากับกราฟบน) ---
-            # ใช้ make_subplots และ secondary_y=True เพื่อจองพื้นที่ด้านขวาให้เท่ากัน
+            # --- 7. กราฟ Lux (ปรับเพื่อให้สมมาตรกับกราฟบน) ---
             fig2 = make_subplots(specs=[[{"secondary_y": True}]])
             fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', name="Lux", 
                                      line=dict(color="#FFCC00", width=1.5), 
@@ -106,7 +106,8 @@ try:
             
             fig2.update_layout(
                 template="plotly_dark", height=160, 
-                margin=dict(l=10, r=50, t=10, b=10), # r=50 ต้องเท่ากับกราฟบนเป๊ะ
+                # Margin ต้องเท่ากับกราฟบนเป๊ะเพื่อความสมมาตร
+                margin=dict(l=50, r=50, t=10, b=10), 
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False,
                 showlegend=False
             )
@@ -116,7 +117,7 @@ try:
                 fixedrange=True, range=[min_x, max_x]
             )
             fig2.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False)
-            # จองพื้นที่แกนขวาแต่ไม่แสดงตัวเลข (เพื่อให้ช่องวาดกราฟกว้างเท่ากราฟบน)
+            # จองพื้นที่แกนขวาแต่ไม่แสดงตัวเลข เพื่อให้ช่องวาดกราฟกว้างเท่ากันเป๊ะ
             fig2.update_yaxes(secondary_y=True, showticklabels=False, showgrid=False, fixedrange=True)
             
             st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
