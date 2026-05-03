@@ -20,14 +20,16 @@ def load_data():
     df = pd.read_csv(csv_url)
     df.columns = [str(col).strip().lower() for col in df.columns]
     
-    # อ่านเวลาสากล (UTC) แล้วแปลงเป็นเวลาไทย (+7)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    # แก้ไขบรรทัดนี้: ใช้ format='mixed' เพื่อให้อ่านได้ทุกรูปแบบ
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
     
-    # ตรวจสอบว่าถ้าข้อมูลยังไม่มี Timezone ให้ระบุเป็น UTC ก่อนแล้วค่อยแปลงเป็นไทย
+    # ตรวจสอบและแปลง Timezone
     if df['timestamp'].dt.tz is None:
-        df['timestamp'] = df['timestamp'].dt.tz_localize('UTC').dt.tz_convert(tz_thai)
-    else:
-        df['timestamp'] = df['timestamp'].dt.tz_convert(tz_thai)
+        # ถ้าไม่มีโซนเวลา (แบบเก่า) ให้ถือว่าเป็น UTC ก่อน
+        df['timestamp'] = df['timestamp'].dt.tz_localize('UTC')
+    
+    # แปลงเป็นเวลาไทยเสมอสำหรับการแสดงผล
+    df['timestamp'] = df['timestamp'].dt.tz_convert('Asia/Bangkok')
         
     return df
 
