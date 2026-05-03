@@ -27,18 +27,15 @@ sheet_id = "1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4"
 
 @st.cache_data(ttl=60)
 def load_data():
-    # สร้างชื่อ Sheet ตามเดือนปัจจุบัน (เช่น MAY_2026)
     now = pd.Timestamp.now(tz=tz_thai)
     month_names = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
     current_sheet_name = f"{month_names[now.month - 1]}_{now.year}"
     
-    # URL สำหรับดึง CSV โดยระบุชื่อ Sheet
     csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={current_sheet_name}"
     
     try:
         df = pd.read_csv(csv_url)
         df.columns = [str(col).strip().lower() for col in df.columns]
-        
         if 'timestamp' not in df.columns:
             return pd.DataFrame()
 
@@ -52,13 +49,11 @@ def load_data():
 try:
     all_data = load_data()
     
-    # --- 4. ส่วนหัวและการเลือกวันที่ ---
-    st.subheader("🌱 Smart Farm Monitoring")
-    
     if not all_data.empty:
         latest_date_val = all_data['timestamp'].max().date()
-        col_date, col_time = st.columns([1, 2])
+        st.subheader("🌱 Smart Farm Monitoring")
         
+        col_date, col_time = st.columns([1, 2])
         with col_date:
             selected_date = st.date_input("เลือกวันที่", value=latest_date_val, label_visibility="collapsed")
         
@@ -78,24 +73,45 @@ try:
             m2.metric("💧 ความชื้น", f"{float(latest['hum']):.2f}%")
             m3.metric("☀️ แสงสว่าง", f"{float(latest['lux']):.2f} Lux")
 
-            # --- 6. กราฟ Temp & Hum ---
+            # --- 6. กราฟ Temp & Hum (ปรับปรุงเส้นตาราง) ---
             fig1 = make_subplots(specs=[[{"secondary_y": True}]])
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
             
             fig1.update_layout(
                 template="plotly_dark", height=280, margin=dict(l=10, r=10, t=10, b=10),
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified"
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                dragmode=False
             )
-            fig1.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)')
-            st.plotly_chart(fig1, use_container_width=True)
+            
+            # ปรับแต่งแกน X
+            fig1.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True)
+            
+            # ปรับแต่งแกน Y ซ้าย (Temp) - ให้แสดงเส้นตาราง
+            fig1.update_yaxes(
+                showgrid=True, 
+                gridcolor='rgba(255,255,255,0.1)', 
+                fixedrange=True, 
+                secondary_y=False,
+                nticks=10 # บังคับจำนวนช่องไฟให้เหมาะสม
+            )
+            
+            # ปรับแต่งแกน Y ขวา (Hum) - ปิดเส้นตารางเพื่อไม่ให้ทับซ้อนกัน
+            fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True)
+            
+            st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
             # --- 7. กราฟ Lux ---
             fig2 = go.Figure()
             fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', name="Lux", line=dict(color="#FFCC00")))
-            fig2.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
-            fig2.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)')
-            st.plotly_chart(fig2, use_container_width=True)
+            fig2.update_layout(
+                template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10), 
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False
+            )
+            fig2.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True)
+            fig2.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True)
+            st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
     else:
         st.error("ไม่พบข้อมูลในระบบ โปรดตรวจสอบการเชื่อมต่อกับ Google Sheets")
 
