@@ -2,9 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import datetime
+import pytz
 
 # --- 1. การตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="Smart Farm", layout="wide")
+
+# ล็อค Timezone เป็นประเทศไทย
+tz = pytz.timezone('Asia/Bangkok')
+now_th = datetime.datetime.now(tz)
+today_th = now_th.date()
 
 # --- 2. CSS ปรับแต่งระยะห่างให้สมดุล ---
 st.markdown("""
@@ -42,45 +49,42 @@ csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
 @st.cache_data(ttl=60)
 def load_data():
     df = pd.read_csv(csv_url)
-    # 1. ปรับชื่อคอลัมน์ให้เป็นตัวพิมพ์เล็กและตัดช่องว่าง
     df.columns = [str(col).strip().lower() for col in df.columns]
-    # 2. แปลงคอลัมน์ timestamp ให้เป็นรูปแบบวันที่และเวลา
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    # 3. เพิ่มบรรทัดนี้: สั่งให้เรียงลำดับตามเวลาจากน้อยไปมาก (สำคัญมาก!)
-    df = df.sort_values('timestamp').reset_index(drop=True)
+    # แปลง timestamp โดยระบุว่าเป็น UTC ก่อนแล้วค่อยเปลี่ยนเป็น Bangkok
+    df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_localize('UTC').dt.tz_convert(tz)
     return df
 
 try:
     all_data = load_data()
-    max_date = all_data['timestamp'].max().date()
 
-    # --- 4. ส่วนหัว (ย้ายอัปเดตล่าสุดไปไว้ด้านบนขวา) ---
+    # --- 4. ส่วนหัว ---
     st.subheader("🌱 Smart Farm")
     
-    # แบ่งคอลัมน์สำหรับ วันที่ และ แถบอัปเดตล่าสุด
     head_c1, head_c2 = st.columns([1, 2], gap="small")
     
     with head_c1:
-        selected_date = st.date_input("Date", value=max_date, label_visibility="collapsed")
+        # ปรับให้ค่าเริ่มต้นของปฏิทินเป็นวันที่ปัจจุบันของไทยเสมอ
+        selected_date = st.date_input("Date", value=today_th, label_visibility="collapsed")
     
+    # กรองข้อมูลตามวันที่เลือก
     data = all_data[all_data['timestamp'].dt.date == selected_date]
 
     with head_c2:
         if not data.empty:
             latest = data.iloc[-1]
-            # ย้ายมาไว้ในกรอบขวามือตามที่ระบุ
             st.info(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
         else:
-            st.warning("ไม่มีข้อมูล")
+            # หากไม่มีข้อมูลในวันที่เลือก ให้แสดงเวลาปัจจุบันของไทยแทน
+            st.warning(f"ไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
 
     if not data.empty:
         # --- 5. Metrics ---
         m1, m2, m3 = st.columns(3)
-        m1.metric("🌡️ Temp", f"{latest['temp']}°C")
-        m2.metric("💧 Hum", f"{latest['hum']}%")
-        m3.metric("☀️ Lux", f"{latest['lux']}")
+        m1.metric("🌡️ Temp", f"{latest['temp']:.2f}°C")
+        m2.metric("💧 Hum", f"{latest['hum']:.2f}%")
+        m3.metric("☀️ Lux", f"{latest['lux']:.2f}")
 
-        # --- 6. กราฟรวม (ล็อคการปรับ และตั้งความสูงให้พอดีมือถือ) ---
+        # --- 6. กราฟรวม ---
         fig1 = make_subplots(specs=[[{"secondary_y": True}]])
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
         fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
@@ -89,9 +93,9 @@ try:
             template="plotly_dark", height=280, 
             margin=dict(l=10, r=10, t=10, b=10),
             hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=True,  # <--- เปลี่ยนจาก False เป็น True ตรงนี้ครับ
+            showlegend=True, 
             dragmode=False,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1) # เพิ่มบรรทัดนี้เพื่อให้ชื่อไปอยู่ด้านบน
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
         fig1.update_xaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
         fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
