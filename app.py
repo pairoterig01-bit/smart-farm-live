@@ -55,15 +55,12 @@ try:
     if not all_data.empty:
         data = all_data[all_data['timestamp'].dt.date == selected_date]
         
-        with col_time:
-            if not data.empty:
-                latest = data.iloc[-1]
-                st.info(f"🕒 ข้อมูลล่าสุดของวัน: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
-            else:
-                st.warning(f"ยังไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')} ในระบบ")
-
         if not data.empty:
-            # คำนวณช่วงเวลา Min/Max เพื่อล็อคแกน X ให้เท่ากันเป๊ะ
+            latest = data.iloc[-1]
+            with col_time:
+                st.info(f"🕒 ข้อมูลล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+
+            # --- คำนวณช่วงเวลา Min/Max เพื่อล็อคแกน X ให้ตรงกันทุกจุด ---
             min_x = data['timestamp'].min()
             max_x = data['timestamp'].max()
 
@@ -73,42 +70,55 @@ try:
             m2.metric("💧 ความชื้น", f"{float(latest['hum']):.2f}%")
             m3.metric("☀️ แสงสว่าง", f"{float(latest['lux']):.2f} Lux")
 
-            # --- 6. กราฟ Temp & Hum (คงเดิม) ---
+            # --- 6. กราฟ Temp & Hum ---
             fig1 = make_subplots(specs=[[{"secondary_y": True}]])
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
             
             fig1.update_layout(
-                template="plotly_dark", height=280, margin=dict(l=10, r=10, t=10, b=10),
+                template="plotly_dark", height=280, 
+                margin=dict(l=10, r=10, t=10, b=10),
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified",
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 dragmode=False
             )
-            fig1.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, range=[min_x, max_x])
+            
+            # บังคับจุดเริ่ม-จบ และจำนวนช่วงเวลา (nticks=8)
+            fig1.update_xaxes(
+                tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', 
+                fixedrange=True, range=[min_x, max_x], nticks=8
+            )
             fig1.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False, nticks=10)
             fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True)
             st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
-            # --- 7. กราฟ Lux (แก้ไข: บังคับให้หดเข้ามาเพื่อให้แกนตรงกัน) ---
-            # ใช้ make_subplots และเปิด secondary_y=True เพื่อจองพื้นที่ด้านขวาเหมือนกราฟบน
+            # --- 7. กราฟ Lux ---
+            # ใช้ secondary_y เพื่อจองพื้นที่ด้านขวาให้กราฟหดเข้ามาเท่ากันเป๊ะ
             fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-            fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', name="Lux", line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'), secondary_y=False)
+            fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', name="Lux", 
+                                     line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'), secondary_y=False)
             
             fig2.update_layout(
                 template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10), 
                 paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', dragmode=False,
                 showlegend=False
             )
-            # ล็อคช่วงเวลาแกน X ให้เท่ากับกราฟบน
-            fig2.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, range=[min_x, max_x])
-            fig2.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False)
             
-            # จุดสำคัญ: จองพื้นที่แกนขวาแต่ไม่แสดงตัวเลข (เพื่อให้พื้นที่วาดกราฟหดเข้ามาเท่ากับด้านบนเป๊ะ)
+            # บังคับจุดเริ่ม-จบ และจำนวนช่วงเวลาให้เท่ากับกราฟบน
+            fig2.update_xaxes(
+                tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', 
+                fixedrange=True, range=[min_x, max_x], nticks=8
+            )
+            fig2.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False)
+            # จองพื้นที่แกนขวาแต่ไม่แสดงตัวเลข เพื่อให้พื้นที่วาดกราฟตรงกัน
             fig2.update_yaxes(secondary_y=True, showticklabels=False, showgrid=False, fixedrange=True)
             
             st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+        else:
+            with col_time:
+                st.warning(f"ยังไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
     else:
-        st.error(f"ไม่พบฐานข้อมูล (Sheet) ของเดือน {selected_date.strftime('%m/%Y')}")
+        st.error(f"ไม่พบฐานข้อมูลของเดือน {selected_date.strftime('%m/%Y')}")
 
 except Exception as e:
     st.error(f"เกิดข้อผิดพลาด: {e}")
