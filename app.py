@@ -37,11 +37,16 @@ def load_data():
     df = pd.read_csv(csv_url)
     df.columns = [str(col).strip().lower() for col in df.columns]
     
-    # แก้ไขปัญหา Mixed Timezones: บังคับให้เป็น UTC ทั้งหมดก่อน
+    # 1. อ่านวันที่โดยใช้ format='mixed' เพื่อรองรับข้อมูลทั้งเก่าและใหม่
+    # และใช้ utc=True เพื่อให้ระบบจัดการ Timezone ได้นิ่งขึ้น
     df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True)
     
-    # แปลงเป็นเวลาไทย (+7) สำหรับการแสดงผล
+    # 2. แปลงเป็นเวลาไทย (+7) 
+    # เนื่องจากเราบันทึกแบบ GMT+7 ลง Sheet แล้ว การอ่านค่าอาจต้องปรับให้ตรงกัน
     df['timestamp'] = df['timestamp'].dt.tz_convert(tz_thai)
+    
+    # 3. เรียงลำดับข้อมูลให้กราฟลากเส้นต่อเนื่อง
+    df = df.sort_values('timestamp').reset_index(drop=True)
     
     return df
 
