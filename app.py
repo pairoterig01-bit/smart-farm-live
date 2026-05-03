@@ -22,49 +22,59 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. การเชื่อมต่อข้อมูลแบบ Dynamic Sheet ---
+# --- 3. ฟังก์ชันโหลดข้อมูล (ปรับปรุงให้รับค่าวันที่เพื่อเลือก Sheet) ---
 sheet_id = "1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4"
 
 @st.cache_data(ttl=60)
-def load_data():
-    now = pd.Timestamp.now(tz=tz_thai)
+def load_data_by_date(target_date):
+    # สร้างชื่อ Sheet ตามเดือนและปีที่ผู้ใช้เลือกจากปฏิทิน (เช่น MAY_2026)
     month_names = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
-    current_sheet_name = f"{month_names[now.month - 1]}_{now.year}"
+    sheet_name = f"{month_names[target_date.month - 1]}_{target_date.year}"
     
-    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={current_sheet_name}"
+    # URL สำหรับดึง CSV ของ Sheet นั้นๆ
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={sheet_name}"
     
     try:
         df = pd.read_csv(csv_url)
         df.columns = [str(col).strip().lower() for col in df.columns]
+        
         if 'timestamp' not in df.columns:
             return pd.DataFrame()
 
         df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
+        # จัดการ Timezone
         df['timestamp'] = df['timestamp'].apply(lambda dt: tz_thai.localize(dt) if dt.tzinfo is None else dt.astimezone(tz_thai))
         df = df.sort_values('timestamp').reset_index(drop=True)
         return df
     except:
+        # หากไม่พบ Sheet ของเดือนนั้น (เช่น ยังไม่มีการเก็บข้อมูล)
         return pd.DataFrame()
 
+# --- 4. ส่วนหัวและการเลือกวันที่ ---
+st.subheader("🌱 Smart Farm Monitoring")
+
+# สร้างส่วนเลือกวันที่ก่อนเพื่อนำไปโหลดข้อมูล
+# ตั้งค่าเริ่มต้นเป็นวันที่ปัจจุบัน
+now_thai = pd.Timestamp.now(tz=tz_thai)
+col_date, col_time = st.columns([1, 2])
+
+with col_date:
+    selected_date = st.date_input("เลือกวันที่", value=now_thai.date(), label_visibility="collapsed")
+
+# โหลดข้อมูลของเดือนที่เลือก
+all_data = load_data_by_date(selected_date)
+
 try:
-    all_data = load_data()
-    
     if not all_data.empty:
-        latest_date_val = all_data['timestamp'].max().date()
-        st.subheader("🌱 Smart Farm Monitoring")
-        
-        col_date, col_time = st.columns([1, 2])
-        with col_date:
-            selected_date = st.date_input("เลือกวันที่", value=latest_date_val, label_visibility="collapsed")
-        
+        # กรองข้อมูลเฉพาะวันที่เลือก
         data = all_data[all_data['timestamp'].dt.date == selected_date]
         
         with col_time:
             if not data.empty:
                 latest = data.iloc[-1]
-                st.info(f"🕒 ข้อมูลล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+                st.info(f"🕒 ข้อมูลล่าสุดของวัน: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
             else:
-                st.warning(f"ไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
+                st.warning(f"ยังไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')} ในระบบ")
 
         if not data.empty:
             # --- 5. Metrics ---
@@ -73,7 +83,7 @@ try:
             m2.metric("💧 ความชื้น", f"{float(latest['hum']):.2f}%")
             m3.metric("☀️ แสงสว่าง", f"{float(latest['lux']):.2f} Lux")
 
-            # --- 6. กราฟ Temp & Hum (ปรับปรุงเส้นตาราง) ---
+            # --- 6. กราฟ Temp & Hum ---
             fig1 = make_subplots(specs=[[{"secondary_y": True}]])
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
             fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
@@ -84,22 +94,9 @@ try:
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 dragmode=False
             )
-            
-            # ปรับแต่งแกน X
             fig1.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True)
-            
-            # ปรับแต่งแกน Y ซ้าย (Temp) - ให้แสดงเส้นตาราง
-            fig1.update_yaxes(
-                showgrid=True, 
-                gridcolor='rgba(255,255,255,0.1)', 
-                fixedrange=True, 
-                secondary_y=False,
-                nticks=10 # บังคับจำนวนช่องไฟให้เหมาะสม
-            )
-            
-            # ปรับแต่งแกน Y ขวา (Hum) - ปิดเส้นตารางเพื่อไม่ให้ทับซ้อนกัน
+            fig1.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True, secondary_y=False, nticks=10)
             fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True)
-            
             st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
 
             # --- 7. กราฟ Lux ---
@@ -113,7 +110,7 @@ try:
             fig2.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.1)', fixedrange=True)
             st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
     else:
-        st.error("ไม่พบข้อมูลในระบบ โปรดตรวจสอบการเชื่อมต่อกับ Google Sheets")
+        st.error(f"ไม่พบฐานข้อมูล (Sheet) ของเดือน {selected_date.strftime('%m/%Y')}")
 
 except Exception as e:
     st.error(f"เกิดข้อผิดพลาด: {e}")
