@@ -5,7 +5,7 @@ from plotly.subplots import make_subplots
 import pytz
 
 # --- 1. การตั้งค่าหน้าจอ ---
-st.set_page_config(page_title="Smart Farm", layout="wide")
+st.set_page_config(page_title="Smart Farm Dashboard", layout="wide")
 tz_thai = pytz.timezone('Asia/Bangkok')
 
 # --- 2. CSS ปรับแต่ง UI ---
@@ -18,98 +18,86 @@ st.markdown("""
         background: rgba(255,255,255,0.03);
     }
     div[data-testid="stMetricValue"] { font-size: 20px !important; }
-    div.stAlert { padding: 0px 20px !important; min-height: auto !important; margin-top: 0px !important; }
-    div.stAlert p { font-size: 20px !important; margin: 0 !important; }
     .stVerticalBlock { gap: 0.8rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. การเชื่อมต่อข้อมูล ---
-sheet_url = "https://docs.google.com/spreadsheets/d/1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4/edit?usp=sharing"
-csv_url = sheet_url.replace('/edit?usp=sharing', '/export?format=csv')
+# --- 3. การเชื่อมต่อข้อมูลแบบ Dynamic Sheet ---
+sheet_id = "1mFHJgSss6ofUTghbaEgy6Po2032DMZ3cd_gzPd04Cf4"
 
 @st.cache_data(ttl=60)
 def load_data():
-    df = pd.read_csv(csv_url)
-    df.columns = [str(col).strip().lower() for col in df.columns]
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
+    # สร้างชื่อ Sheet ตามเดือนปัจจุบัน (เช่น MAY_2026)
+    now = pd.Timestamp.now(tz=tz_thai)
+    month_names = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+    current_sheet_name = f"{month_names[now.month - 1]}_{now.year}"
     
-    def fix_timezone(dt):
-        if dt.tzinfo is not None:
-            return dt.astimezone(tz_thai)
-        return tz_thai.localize(dt)
+    # URL สำหรับดึง CSV โดยระบุชื่อ Sheet
+    csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={current_sheet_name}"
+    
+    try:
+        df = pd.read_csv(csv_url)
+        df.columns = [str(col).strip().lower() for col in df.columns]
+        
+        if 'timestamp' not in df.columns:
+            return pd.DataFrame()
 
-    df['timestamp'] = df['timestamp'].apply(fix_timezone)
-    df = df.sort_values('timestamp').reset_index(drop=True)
-    return df
+        df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
+        df['timestamp'] = df['timestamp'].apply(lambda dt: tz_thai.localize(dt) if dt.tzinfo is None else dt.astimezone(tz_thai))
+        df = df.sort_values('timestamp').reset_index(drop=True)
+        return df
+    except:
+        return pd.DataFrame()
 
 try:
     all_data = load_data()
-    latest_date_val = all_data['timestamp'].max().date()
-
-    # --- 4. ส่วนหัว ---
-    st.subheader("🌱 Smart Farm")
-    head_c1, head_c2 = st.columns([1, 2], gap="small")
-    with head_c1:
-        selected_date = st.date_input("Date", value=latest_date_val, label_visibility="collapsed")
     
-    data = all_data[all_data['timestamp'].dt.date == selected_date]
+    # --- 4. ส่วนหัวและการเลือกวันที่ ---
+    st.subheader("🌱 Smart Farm Monitoring")
+    
+    if not all_data.empty:
+        latest_date_val = all_data['timestamp'].max().date()
+        col_date, col_time = st.columns([1, 2])
+        
+        with col_date:
+            selected_date = st.date_input("เลือกวันที่", value=latest_date_val, label_visibility="collapsed")
+        
+        data = all_data[all_data['timestamp'].dt.date == selected_date]
+        
+        with col_time:
+            if not data.empty:
+                latest = data.iloc[-1]
+                st.info(f"🕒 ข้อมูลล่าสุด: {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
+            else:
+                st.warning(f"ไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
 
-    with head_c2:
         if not data.empty:
-            latest = data.iloc[-1]
-            st.info(f"🕒 {latest['timestamp'].strftime('%H:%M:%S')} (พ.ศ. {latest['timestamp'].year + 543})")
-        else:
-            st.warning(f"ไม่มีข้อมูลของวันที่ {selected_date.strftime('%d/%m/%Y')}")
+            # --- 5. Metrics ---
+            m1, m2, m3 = st.columns(3)
+            m1.metric("🌡️ อุณหภูมิ", f"{float(latest['temp']):.2f}°C")
+            m2.metric("💧 ความชื้น", f"{float(latest['hum']):.2f}%")
+            m3.metric("☀️ แสงสว่าง", f"{float(latest['lux']):.2f} Lux")
 
-    if not data.empty:
-        # --- 5. Metrics ---
-        m1, m2, m3 = st.columns(3)
-        m1.metric("🌡️ Temp", f"{float(latest['temp']):.2f}°C")
-        m2.metric("💧 Hum", f"{float(latest['hum']):.2f}%")
-        m3.metric("☀️ Lux", f"{float(latest['lux']):.2f}")
+            # --- 6. กราฟ Temp & Hum ---
+            fig1 = make_subplots(specs=[[{"secondary_y": True}]])
+            fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
+            fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
+            
+            fig1.update_layout(
+                template="plotly_dark", height=280, margin=dict(l=10, r=10, t=10, b=10),
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', hovermode="x unified"
+            )
+            fig1.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+            st.plotly_chart(fig1, use_container_width=True)
 
-        # --- 6. กราฟรวม (Temp & Hum) ---
-        fig1 = make_subplots(specs=[[{"secondary_y": True}]])
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['temp'], name="Temp", line=dict(color="#FF4B4B", width=2)), secondary_y=False)
-        fig1.add_trace(go.Scatter(x=data['timestamp'], y=data['hum'], name="Hum", line=dict(color="#00D2FF", width=2)), secondary_y=True)
-
-        fig1.update_layout(
-            template="plotly_dark", height=280, 
-            margin=dict(l=10, r=10, t=10, b=10),
-            hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-            showlegend=True, dragmode=False,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
-        )
-        
-        # แก้ไข: เอา dtick ออกเพื่อให้ระบบคำนวณแกนเวลาให้อัตโนมัติ (แก้ปัญหาแกนหาย)
-        fig1.update_xaxes(
-            showgrid=True, 
-            gridwidth=1, 
-            gridcolor='rgba(255, 255, 255, 0.1)',
-            tickformat="%H:%M", # บังคับรูปแบบการแสดงผลเวลา
-            fixedrange=True
-        )
-        fig1.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True, secondary_y=False)
-        fig1.update_yaxes(showgrid=False, fixedrange=True, secondary_y=True)
-        
-        st.plotly_chart(fig1, use_container_width=True, config={'displayModeBar': False})
-
-        # --- 7. กราฟ Lux ---
-        fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', line=dict(color="#FFCC00", width=1.5), fillcolor='rgba(255, 204, 0, 0.1)'))
-        fig2.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10), dragmode=False)
-        
-        fig2.update_xaxes(
-            showgrid=True, 
-            gridwidth=1, 
-            gridcolor='rgba(255, 255, 255, 0.1)',
-            tickformat="%H:%M",
-            fixedrange=True
-        )
-        fig2.update_yaxes(showgrid=True, gridcolor='rgba(255, 255, 255, 0.1)', fixedrange=True)
-        
-        st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
+            # --- 7. กราฟ Lux ---
+            fig2 = go.Figure()
+            fig2.add_trace(go.Scatter(x=data['timestamp'], y=data['lux'], fill='tozeroy', name="Lux", line=dict(color="#FFCC00")))
+            fig2.update_layout(template="plotly_dark", height=160, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+            fig2.update_xaxes(tickformat="%H:%M", showgrid=True, gridcolor='rgba(255,255,255,0.1)')
+            st.plotly_chart(fig2, use_container_width=True)
+    else:
+        st.error("ไม่พบข้อมูลในระบบ โปรดตรวจสอบการเชื่อมต่อกับ Google Sheets")
 
 except Exception as e:
-    st.error(f"Error: {e}")
+    st.error(f"เกิดข้อผิดพลาด: {e}")
